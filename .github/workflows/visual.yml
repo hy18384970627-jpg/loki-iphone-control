@@ -27,6 +27,7 @@ jobs:
           unzip -q /tmp/loki-app-source.zip -d app-source
           printf '%s  %s\n' '4aca0a76886ce9650ce85aefdca1c6bb826f607d166e26df1ef9ee3483b578be' loki-visual-control-v2.zip | shasum -a 256 -c -
           unzip -oq loki-visual-control-v2.zip -d app-source
+          sed -i '' '/options.showsCursor=true/d' app-source/Sources/App/PhoneScreenCapture.swift
       - name: Generate project
         working-directory: app-source
         run: |

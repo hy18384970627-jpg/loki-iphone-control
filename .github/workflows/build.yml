@@ -1,0 +1,48 @@
+name: Build phone control candidates
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: xcode-27
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: unzip -q iphone-control-source.zip -d source
+      - name: Typecheck native modules
+        working-directory: source
+        run: |
+          xcodebuild -version
+          xcrun swiftc -typecheck -swift-version 5 -DLOKI_IOS27_CAPTURE -target arm64-apple-ios26.0-simulator -sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" native/*.swift
+      - name: Test wire protocol
+        working-directory: source
+        run: |
+          clang++ -std=c++17 tests/protocol_test.cpp -o /tmp/loki-protocol-test
+          /tmp/loki-protocol-test
+          cp tests/wire-main.swift /tmp/main.swift
+          swiftc native/PhoneControlProtocol.swift /tmp/main.swift -o /tmp/loki-wire-test
+          /tmp/loki-wire-test
+  firmware:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: unzip -q iphone-control-source.zip -d source
+      - run: python3 -m pip install platformio==6.2.0
+      - name: Build BLE and wired firmware
+        working-directory: source/firmware
+        run: python3 -m platformio run -e loki-s3-n16r8 -e loki-s3-wired
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: s3-firmware-candidates
+          path: |
+            source/firmware/.pio/build/loki-s3-n16r8/*.bin
+            source/firmware/.pio/build/loki-s3-wired/*.bin
+          retention-days: 1

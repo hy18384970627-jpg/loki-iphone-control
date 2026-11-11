@@ -1,11 +1,11 @@
-name: Build Loki visual control v6
+name: Build Loki visual control v7
 on:
   push:
     branches: [main]
     paths:
       - 'loki-app-source.zip.part*'
       - '.github/workflows/visual.yml'
-      - 'loki-visual-control-v6.zip'
+      - 'loki-visual-control-v7.zip'
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,8 +25,8 @@ jobs:
           cat loki-app-source.zip.part* > /tmp/loki-app-source.zip
           printf '%s  %s\n' 'ca9835716dab6e35f85103cd0f9475908e46ccb03a1c952316b12e9d0daac416' /tmp/loki-app-source.zip | shasum -a 256 -c -
           unzip -q /tmp/loki-app-source.zip -d app-source
-          printf '%s  %s\n' '81913496711bd62b20247393ec034ddf476d0a5a06c4fb766754c62d3cb3cf57' loki-visual-control-v6.zip | shasum -a 256 -c -
-          unzip -oq loki-visual-control-v6.zip -d app-source
+          printf '%s  %s\n' 'af5535b1a4129220e12e08515be371e171adcb217a479376f16bee29296ead12' loki-visual-control-v7.zip | shasum -a 256 -c -
+          unzip -oq loki-visual-control-v7.zip -d app-source
       - name: Generate project
         working-directory: app-source
         run: |
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: loki-visual-control-v6
+          name: loki-visual-control-v7
           path: |
             app-source/build/simulator.log
             app-source/build/device.log

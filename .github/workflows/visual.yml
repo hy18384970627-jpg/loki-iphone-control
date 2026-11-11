@@ -1,0 +1,55 @@
+name: Build Loki visual control v2
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'loki-app-source.zip.part*'
+      - '.github/workflows/visual.yml'
+      - 'loki-visual-control-v2.zip'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integrated-phone-app
+  cancel-in-progress: true
+jobs:
+  app:
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify and unpack reviewed source
+        run: |
+          cat loki-app-source.zip.part* > /tmp/loki-app-source.zip
+          printf '%s  %s\n' 'ca9835716dab6e35f85103cd0f9475908e46ccb03a1c952316b12e9d0daac416' /tmp/loki-app-source.zip | shasum -a 256 -c -
+          unzip -q /tmp/loki-app-source.zip -d app-source
+          printf '%s  %s\n' '4aca0a76886ce9650ce85aefdca1c6bb826f607d166e26df1ef9ee3483b578be' loki-visual-control-v2.zip | shasum -a 256 -c -
+          unzip -oq loki-visual-control-v2.zip -d app-source
+      - name: Generate project
+        working-directory: app-source
+        run: |
+          command -v xcodegen || brew install xcodegen
+          swift scripts/generate-app-icon.swift
+          xcodegen generate --spec project.yml
+          mkdir -p build
+      - name: Compile complete App for simulator
+        working-directory: app-source
+        run: |
+          xcodebuild -project Loki.xcodeproj -scheme Loki -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/Simulator CODE_SIGNING_ALLOWED=NO build > build/simulator.log 2>&1 || { tail -100 build/simulator.log; exit 1; }
+      - name: Compile real iPhone architecture
+        working-directory: app-source
+        run: |
+          xcodebuild -project Loki.xcodeproj -scheme Loki -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/Device CODE_SIGNING_ALLOWED=NO build > build/device.log 2>&1 || { tail -100 build/device.log; exit 1; }
+          python3 scripts/verify-device-build.py build/Device/Build/Products/Debug-iphoneos/Loki.app
+          ditto -c -k --sequesterRsrc --keepParent build/Device/Build/Products/Debug-iphoneos/Loki.app build/Loki-screen-control-unsigned.zip
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: loki-visual-control-v2
+          path: |
+            app-source/build/simulator.log
+            app-source/build/device.log
+            app-source/build/Loki-screen-control-unsigned.zip
+          retention-days: 1
